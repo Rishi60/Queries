@@ -1,0 +1,40 @@
+Select
+  pr.scode ApplicationUniqueId,
+  pr.dtapprove ApplicationDate,
+  cc.sApplicantDecision Recommendation,/* Lease Applicant Screening Score*/
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  ud.damount SecurityDepositOffered,
+  ud.bmovein,
+  (
+    case when th.sevent = 'Lease Signed' then 'Yes' else 'No' end
+  ) LeaseClosed
+from
+  property p
+  inner join unit u on p.hmy = u.hproperty
+  inner join unittype ut on ut.hproperty = p.hmy
+  inner join unitdet ud on ud.hunittype = ut.hmy
+  inner join prospect pr on pr.hunit = u.hmy
+  inner join tenant t on t.hmyperson = pr.htenant
+  inner join tenant_history th on th.htent = t.hmyperson
+  inner join chargtyp c on c.hmy = ud.hchgcode
+  inner join CreditCheckMitsHeader cc on cc.hproperty=p.hmy
+where
+  p.itype = 3
+  and isnull(p.binactive, 0) = 0
+  and ud.bmovein=-1
+  and pr.sstatus in ('Approved', 'Resident')
+  and t.istatus in (0, 2, 6)
+  and ud.sremarks = 'Security Deposit'
+  and th.sevent = 'Lease Signed'
+  and cc.sapplicantdecision='Accept - Standard Deposit'
+group by p.scode,
+u.scode,
+pr.scode,
+p.saddr1,
+pr.dtapprove,
+th.sevent,
+ud.damount,
+ud.bmovein,
+cc.sApplicantDecision
