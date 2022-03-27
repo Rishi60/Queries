@@ -58,6 +58,230 @@ select * from property where scode in (
 
 Part-3
 
+Select
+  pr.scode ApplicationUniqueId,
+  t.scode TeantID,
+  --pr.dtapprove ApplicationDate,
+  --cc.sApplicantDecision Recommendation,/* Lease Applicant Screening Score*/
+  t.dtleasefrom LeaseStartDate,
+  t.dtleaseto LeaseEndDate,
+  t.istatus TenantStatus,
+  t.srent RentAmount,
+  t.dtmovein MoveinDate,
+  t.dtmoveout MoveOutDate,
+  tr.samount OpenDepositBalance,
+  (case when tr.hretentionacct=61 then tr.samount else 'No' end) ClosedDepositBalance
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  ud.damount SecurityDepositOffered,
+  ud.bmovein,
+  (
+    case when th.sevent = 'Lease Signed' then 'Yes' else 'No' end
+  ) LeaseClosed
+  
+from
+  property p
+  inner join unit u on p.hmy = u.hproperty
+  inner join unittype ut on ut.hproperty = p.hmy
+  inner join unitdet ud on ud.hunittype = ut.hmy
+  inner join prospect pr on pr.hunit = u.hmy
+  inner join tenant t on t.hmyperson = pr.htenant
+  inner join tenant_history th on th.htent = t.hmyperson
+  inner join chargtyp c on c.hmy = ud.hchgcode
+  --inner join CreditCheckMitsHeader cc on cc.hproperty=p.hmy
+  inner join trans tr on tr.hperson=t.hmyperson 
+where
+  p.itype = 3
+  and isnull(p.binactive, 0) = 0
+  --and ud.bmovein=-1
+  and pr.sstatus in ('Approved', 'Resident')
+  and t.istatus in (0, 2, 6)
+  --and ud.sremarks = 'Security Deposit'
+  --and th.sevent = 'Lease Signed'
+  --and cc.sapplicantdecision='Accept - Standard Deposit'
+  and tr.snotes='Security Deposit'
+group by p.scode,
+u.scode,
+pr.scode,
+p.saddr1,
+--pr.dtapprove,
+th.sevent,
+--ud.damount,
+--ud.bmovein,
+--cc.sApplicantDecision
+
+------------------------------------------------------
+
+Part-4
+
+Select
+  year(p.dtcreated), 
+  pr.scode ApplicationUniqueId,
+  pr.dtapprove ApplicationDate,
+  pr.sstatus ApplicantStatus,
+  cc.sApplicantDecision Recommendation,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  ud.damount SecurityDepositOffered,
+  (
+    case when th.sevent = 'Lease Signed' then 'Yes' else 'No' end
+  ) LeaseClosed
+from
+  property p
+  inner join prospect pr on pr.hproperty = p.hmy
+  left join unit u on p.hmy = u.hproperty and u.hmy=pr.hunit
+  left join unittype ut on ut.hproperty = p.hmy
+  left join unitdet ud on ud.hunittype = ut.hmy and ud.sremarks = 'Security Deposit' and ud.bmovein = -1
+  LEFT join tenant t on t.hmyperson = pr.htenant
+  LEFT JOIN tenstatus ts ON t.istatus = ts.istatus
+  LEFT join tenant_history th on th.htent = t.hmyperson and th.sevent = 'Lease Signed'
+  LEFT join CreditCheckMitsHeader cc on cc.hproperty = p.hmy --1
+where
+  p.ityperes=1
+  and p.scode='1580milw'
+  --AND pr.hproperty = 261
+  --AND pr.scode IN ('p0104549')
+  and isnull(p.binactive, 0) = 0
+  --and t.istatus in (0,1,2,3,4,5,6,7,8,9)
+  --and cc.sapplicantdecision='Accept - Standard Deposit' --2
+  and year(p.dtcreated)>=2017
+group by
+  p.scode,
+  u.scode,
+  pr.scode,
+  p.saddr1,
+  pr.dtapprove,
+  pr.sstatus,
+  p.saddr1,
+  th.sevent,
+  ud.damount,
+  ud.bmovein,
+  cc.sApplicantDecision,
+  pr.sstatus,
+  year(p.dtcreated),
+  ISNULL(ts.status, '-')
+  order by p.scode,
+  Pr.scode
+
+------------------------------------------------------------------
+
+Part-5
+
+Select
+  year(p.dtcreated), 
+  pr.scode ApplicationUniqueId,
+  pr.dtapprove ApplicationDate,
+  pr.sstatus ApplicantStatus,
+  cc.sApplicantDecision Recommendation,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  ud.damount SecurityDepositOffered,
+  (
+    case when th.sevent = 'Lease Signed' then 'Yes' else 'No' end
+  ) LeaseClosed
+from
+  property p
+  inner join prospect pr on pr.hproperty = p.hmy
+  left join unit u on p.hmy = u.hproperty and u.hmy=pr.hunit
+  left join unittype ut on ut.hproperty = p.hmy
+  left join unitdet ud on ud.hunittype = ut.hmy and ud.sremarks = 'Security Deposit' and ud.bmovein = -1
+  LEFT join tenant t on t.hmyperson = pr.htenant
+  LEFT JOIN tenstatus ts ON t.istatus = ts.istatus
+  LEFT join tenant_history th on th.htent = t.hmyperson and th.sevent = 'Lease Signed'
+  LEFT join CreditCheckMitsHeader cc on cc.hproperty = p.hmy --1
+where
+  p.ityperes=1
+  and p.scode='templat2'
+  --AND pr.hproperty = 261
+  --AND pr.scode IN ('p0104549')
+  and isnull(p.binactive, 0) = 0
+  --and t.istatus in (0,1,2,3,4,5,6,7,8,9)
+  --and cc.sapplicantdecision='Accept - Standard Deposit' --2
+  and year(p.dtcreated)>=2015
+group by
+  p.scode,
+  u.scode,
+  pr.scode,
+  p.saddr1,
+  pr.dtapprove,
+  pr.sstatus,
+  p.saddr1,
+  th.sevent,
+  ud.damount,
+  ud.bmovein,
+  cc.sApplicantDecision,
+  pr.sstatus,
+  year(p.dtcreated),
+  ISNULL(ts.status, '-')
+  order by p.scode,
+  pr.scode
+
+-----------------------------------------------------------
+
+Part-6 (Final Query)
+
+Select
+  pr.scode ApplicationUniqueId,
+  pr.dtapprove ApplicationDate,
+  pr.sstatus ApplicantStatus,
+  cc.sApplicantDecision Recommendation,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  ud.damount SecurityDepositOffered,
+  (
+    case when th.sevent = 'Lease Signed' then 'Yes' else 'No' end
+  ) LeaseClosed
+from
+  property p
+  inner join prospect pr on pr.hproperty = p.hmy
+  left join unit u on p.hmy = u.hproperty
+  and u.hmy = pr.hunit
+  left join unittype ut on ut.hproperty = p.hmy
+  left join unitdet ud on ud.hunittype = ut.hmy
+  and ud.sremarks = 'Security Deposit'
+  and ud.bmovein = -1
+  LEFT join tenant t on t.hmyperson = pr.htenant
+  LEFT JOIN tenstatus ts ON t.istatus = ts.istatus
+  LEFT join tenant_history th on th.htent = t.hmyperson
+  and th.sevent = 'Lease Signed'
+  LEFT join CreditCheckMitsHeader cc on cc.scode = t.scode --1
+where
+   p.scode in ('4350mira','1580milw','3112frid','4000mull','2022blac','edge_old','4831lind','1304sanm','1265capi','cartinv',
+'3112cart','3112cott','perc4247','2500redc','3112ccg','229green','3112verr','verr2885','saddl710','verrexec',
+'3112sadd','3112will','3112iris','3112coli','pear2018','411s4th','clara225','park3110','3112park','parkinv',
+'3112dese','3112mwgo','111south','3112mwpa','291maine','0100gene','cottinv','babcock','pineqozb','pineinv',
+'pinemngr','wood1260','woodland','jasp1018','jaspinv','parkv415','towne244','feliz','moonshin','parkcald',
+'townesqu','oxbow','oxbow2','coppave', '3pparkvi','coppinv','copp2200','avec1607','mwavec','dsflavec',
+'wpavec','rhgpcopp','gococopp','dsflcopp','parkcopp','pinvcopp','kitchen','wpgrtnor','ashpl155','ashplhld',
+'cardross','berkshre','rhgpfund','cwmo450','rive1689','wvil3828','westvill','northcrk','tmbrlake','3plimeli',
+'cwriver')
+   --and pr.sstatus='Prospect'
+  --and p.scode in ()
+--AND pr.hproperty = 261
+  --AND pr.scode IN ('p0104549')
+  --and isnull(p.binactive, 0) = 0 --and t.istatus in (0,1,2,3,4,5,6,7,8,9)
+  --and cc.sapplicantdecision='Accept - Standard Deposit' --2
+  --and year(p.dtcreated) >= 2017
+group by
+  p.scode,
+  u.scode,
+  pr.scode,
+  p.saddr1,
+  pr.dtapprove,
+  pr.sstatus,
+  p.saddr1,
+  th.sevent,
+  ud.damount,
+  ud.bmovein,
+  cc.sApplicantDecision,
+  pr.sstatus
+order by
+  p.scode,
+  pr.scode
 
 
 
