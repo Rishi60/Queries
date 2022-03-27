@@ -38,3 +38,26 @@ th.sevent,
 ud.damount,
 ud.bmovein,
 cc.sApplicantDecision
+------------------------------------------------------------
+
+
+Part-2
+
+select * from property where scode in (
+'4350mira','1580milw','3112frid','4000mull','2022blac','edge_old','4831lind','1304sanm','1265capi','cartinv',
+'3112cart','3112cott','perc4247','2500redc','3112ccg','229green','3112verr','verr2885','saddl710','verrexec',
+'3112sadd','3112will','3112iris','3112coli','pear2018','411s4th','clara225','park3110','3112park','parkinv',
+'3112dese','3112mwgo','111south','3112mwpa','291maine','0100gene','cottinv','babcock','pineqozb','pineinv',
+'pinemngr','wood1260','woodland','jasp1018','jaspinv','parkv415','towne244','feliz','moonshin','parkcald',
+'townesqu','oxbow','oxbow2','coppave', '3pparkvi','coppinv','copp2200','avec1607','mwavec','dsflavec',
+'wpavec','rhgpcopp','gococopp','dsflcopp','parkcopp','pinvcopp','kitchen','wpgrtnor','ashpl155','ashplhld',
+'cardross','berkshre','rhgpfund','cwmo450','rive1689','wvil3828','westvill','northcrk','tmbrlake','3plimeli',
+'cwriver')
+
+----------------------------------------------------------
+
+Part-3
+
+
+
+
