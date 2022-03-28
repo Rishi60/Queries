@@ -81,3 +81,48 @@ tr.bopen,
 tr.hretentionacct
 
 -------------------------------------------------
+Part - 3
+
+select
+  pr.scode ApplicationUniqueId,
+  t.scode TenantID,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  t.dtleasefrom LeaseStartDate,
+  t.dtleaseto LeaseEndDate,
+  ts.status TenantStatus,
+  t.srent RentAmount,
+  t.dtmovein MoveInDate,
+  t.dtmoveout MoveDateOut,
+  (case when tr.hretentionacct=37 then tr.stotalamount else '0' end) OpenDepositBalance,
+  (case when t.istatus=1 then (case when tr.bopen=-1 then sum(stotalamount-samountpaid) else '0' end) else '0' end) ClosedDepositBalance,
+  (case when t.istatus=1 then (case when tr.bopen=-1 then (case when tr.hretentionacct in (52,75) then sum(stotalamount) else '0' end) else '0' end ) else '0' end) UnpaidRentAtMoveOut,
+  (case when t.istatus=1 then (case when tr.bopen=-1 then (case when tr.hretentionacct not in (52,75) then sum(stotalamount) else '0' end) else '0' end ) else '0' end) OtherUnpaidAmtAtMoveOut,
+  0 AmountPaidByTenantAtMoveOut
+from
+  property p
+  inner join unit u on u.hproperty = p.hmy
+  inner join prospect pr on pr.hunit = u.hmy
+  and pr.hproperty = p.hmy
+  inner join tenant t on t.hmyperson = pr.htenant
+  inner join tenstatus ts on ts.istatus = t.istatus
+  left join trans tr on tr.hperson = t.hmyperson
+  --and tr.hretentionacct = 37
+where
+  p.ityperes = 1
+  --and t.istatus in(0, 1, 2, 4, 6, 7, 9)
+  and t.scode='t0004002'
+group by p.scode,u.scode,pr.scode,
+t.scode,
+p.saddr1,
+t.dtmovein,
+t.dtleasefrom,
+t.dtleaseto,
+t.dtmoveout,
+ts.status,
+t.srent,
+tr.stotalamount,
+t.istatus,
+tr.bopen,
+tr.hretentionacct
