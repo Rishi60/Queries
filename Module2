@@ -176,3 +176,63 @@ t.srent
 --tr.bopen,
 --tr.hretentionacct,
 --t.bmovedout
+
+
+
+----------------------select
+  pr.scode ApplicationUniqueId,
+  t.scode TenantID,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  t.dtleasefrom LeaseStartDate,
+  t.dtleaseto LeaseEndDate,
+  ts.status TenantStatus,
+  t.srent RentAmount,
+  t.dtmovein MoveInDate,
+  t.dtmoveout MoveDateOut,
+  OPBal.OPtotal OpenDepositBalance,
+  COLBal.coltotal ClosedDepositBalance1,
+  UnpaidRentTotal.unpaidrent UnpaidRentAtMoveOut,
+  UnpaidOtherTotal.unpaidotheramt OtherUnpaidAmtAtMoveOut,
+  0 AmountPaidByTenantAtMoveOut
+from
+  property p
+  inner join unit u on u.hproperty = p.hmy
+  inner join tenant t on t.hproperty = p.hmy and t.hunit=u.hmy
+  inner join prospect pr on pr.htenant=t.hmyperson
+  left join tenstatus ts on ts.istatus = t.istatus
+  left join (select tr.hperson personhmy,sum(tr.stotalamount) OPtotal from trans tr inner join tenant t on t.hmyperson=tr.hperson and tr.hretentionacct=37 and tr.stotalamount>0 group by tr.hperson) OPBal 
+  on OPBal.personhmy=t.hmyperson
+  left join (select tr.hperson personhmy, sum(tr.stotalamount-tr.samountpaid) coltotal from tenant t inner join trans tr on tr.hperson=t.hmyperson and tr.bopen=-1 and t.istatus=1 and t.bmovedout=-1 and tr.itype=7 group by tr.hperson) COLBal
+  on COLBal.personhmy=t.hmyperson
+  left join (select tr.hperson personhmy, sum(tr.stotalamount-tr.samountpaid) unpaidrent from tenant t inner join trans tr on tr.hperson=t.hmyperson and tr.bopen=-1 and t.istatus=1 and tr.hretentionacct in (52,75) group by tr.hperson) UnpaidRentTotal
+  on UnpaidRentTotal.personhmy=t.hmyperson
+  left join (select tr.hperson personhmy, sum(tr.stotalamount-tr.samountpaid) unpaidotheramt from tenant t inner join trans tr on tr.hperson=t.hmyperson and tr.bopen=-1 and t.istatus=1 and tr.hretentionacct not in (52,75) group by tr.hperson) UnpaidOtherTotal
+  on UnpaidOtherTotal.personhmy=t.hmyperson
+  left join (select t.hmyperson personhmy, sum(tr.stotalamount) ReceiptAfterDA from tenant t inner join tenant_history th 
+             on th.htent=t.hmyperson and th.sevent='Deposit Accounting' and t.bmovedout=-1 and t.istatus=1
+            inner join trans tr on tr.hperson=t.hmyperson and tr.itype=6 and tr.sdatecreated > th.dtoccurred group by t.hmyperson)
+             
+where
+  p.ityperes = 1
+  --and t.istatus in(0, 1, 2, 4, 6, 7, 9)
+  and t.scode in ('t0012235','t0004002')
+group by p.scode,
+u.scode,
+pr.scode,
+t.scode,
+p.saddr1,
+t.dtmovein,
+t.dtleasefrom,
+t.dtleaseto,
+t.dtmoveout,
+ts.status,
+t.srent,
+COLBal.coltotal,
+OPBal.OPtotal,
+UnpaidRentTotal.unpaidrent,
+UnpaidOtherTotal.unpaidotheramt,
+t.istatus
+--tr.hretentionacct,
+--t.bmovedout
