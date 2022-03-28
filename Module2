@@ -1,0 +1,30 @@
+select
+  pr.scode ApplicationUniqueId,
+  t.scode TenantID,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  t.dtleasefrom LeaseStartDate,
+  t.dtleaseto LeaseEndDate,
+  ts.status TenantStatus,
+  t.srent RentAmount,
+  t.dtmovein MoveInDate,
+  t.dtmoveout MoveDateOut,
+  tr.stotalamount OpenDepositBalance,
+  0 ClosedDepositBalance,
+  0 UnpaidRentAtMoveOut,
+  0 OtherUnpaidAmtAtMoveOut,
+  0 AmountPaidByTenantAtMoveOut
+from
+  property p
+  inner join unit u on u.hproperty = p.hmy
+  inner join prospect pr on pr.hunit = u.hmy
+  and pr.hproperty = p.hmy
+  inner join tenant t on t.hmyperson = pr.htenant
+  inner join tenstatus ts on ts.istatus = t.istatus
+  inner join trans tr on tr.hperson = t.hmyperson
+  and tr.hretentionacct = 37
+where
+  p.ityperes = 1
+  and t.istatus in(0, 1, 2, 4, 6, 7, 9)
+  
