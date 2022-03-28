@@ -126,3 +126,53 @@ tr.stotalamount,
 t.istatus,
 tr.bopen,
 tr.hretentionacct
+
+
+----------------------------------
+select
+  pr.scode ApplicationUniqueId,
+  t.scode TenantID,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  t.dtleasefrom LeaseStartDate,
+  t.dtleaseto LeaseEndDate,
+  ts.status TenantStatus,
+  t.srent RentAmount,
+  t.dtmovein MoveInDate,
+  t.dtmoveout MoveDateOut,
+  OPBal.OPtotal OpenDepositBalance,
+  --(case when t.istatus=1 then (case when tr.bopen=-1 then sum(tr.stotalamount-tr.samountpaid) else '0' end) else '0' end) ClosedDepositBalance1,
+  --(case when t.istatus=1 then (case when tr.bopen=-1 then (case when tr.hretentionacct in (52,75) then sum(tr.stotalamount-tr.samountpaid) else '0' end) else '0' end ) else '0' end) UnpaidRentAtMoveOut,
+  --(case when t.istatus=1 then (case when tr.bopen=-1 then (case when tr.hretentionacct not in (52,75) then sum(tr.stotalamount-tr.samountpaid) else '0' end) else '0' end ) else '0' end) OtherUnpaidAmtAtMoveOut,
+  0 AmountPaidByTenantAtMoveOut
+from
+  property p
+  inner join unit u on u.hproperty = p.hmy
+  inner join tenant t on t.hproperty = p.hmy and t.hunit=u.hmy
+  inner join prospect pr on pr.htenant=t.hmyperson
+  left join tenstatus ts on ts.istatus = t.istatus
+  left join (select tr.hperson personhmy,sum(tr.stotalamount) OPtotal from trans tr inner join tenant t on t.hmyperson=tr.hperson and tr.hretentionacct=37 group by tr.hperson) OPBal 
+  on OPBal.personhmy=t.hmyperson and t.scode='t0004002'
+
+where
+  p.ityperes = 1
+  --and t.istatus in(0, 1, 2, 4, 6, 7, 9)
+  and t.scode='t0004002'
+group by p.scode,
+u.scode,
+pr.scode,
+t.scode,
+p.saddr1,
+t.dtmovein,
+t.dtleasefrom,
+t.dtleaseto,
+t.dtmoveout,
+ts.status,
+t.srent
+--tr.stotalamount,
+--OPBal.OPtotal,
+--t.istatus,
+--tr.bopen,
+--tr.hretentionacct,
+--t.bmovedout
