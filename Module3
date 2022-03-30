@@ -1,1 +1,24 @@
-
+select
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  p.saddr2+','+p.saddr3+','+ p.scity+','+ p.sstate+','+p.szipcode Location,
+  count(u.hmy) UnitCount,
+  count(distinct ut.hmy) Unittype
+from
+  property p
+  inner join unittype ut on ut.hproperty = p.hmy
+  inner join unit u on u.hproperty = p.hmy
+  and u.hunittype = ut.hmy
+where
+  p.ityperes = 1
+  and year(p.dtcreated) >= 2017
+  and isnull(p.binactive, 0) = 0
+  and u.exclude = 0
+group by
+  p.scode,
+  p.saddr1,
+  p.saddr2,
+  p.saddr3,
+  p.scity,
+  p.sstate,
+  p.szipcode
