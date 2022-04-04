@@ -424,3 +424,56 @@ group by
   UnpaidOtherTotal.unpaidotheramt,
   t.istatus,
   AmtPaidAfterMoveout.ReceiptAfterDA
+  
+  
+  
+  
+  ------------------------------------------------
+  subpart:
+  SELECT Sum(unpaidcharge.sum1)
+FROM   (
+              SELECT Sum(tr1.stotalamount-tr1.samountpaid) sum1
+              FROM   trans tr1
+              WHERE  tr1.hmy IN
+                     (
+                            SELECT hchkorchg
+                            FROM   detail
+                            WHERE  hinvorrec IN
+                                   (
+                                              SELECT     tr2.hmy
+                                              FROM       trans tr2
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr2.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                     		
+                                              WHERE      CAST(CAST(tr2.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+                                              AND        tr2.itype=6
+                                              AND        tr2.hperson=17806 )
+                            AND    hchkorchg NOT IN
+                                   (
+                                              SELECT     tr3.hmy
+                                              FROM       trans tr3
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr3.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                              WHERE      CAST(CAST(tr3.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime))
+                            AND    tr1.itype=7
+                            AND    tr1.hperson IN
+                                   (
+                                          SELECT hmyperson
+                                          FROM   tenant
+                                          WHERE  scode='t0005242'
+                                          AND    istatus=1)
+                    		and tr1.hretentionacct=52)
+                            UNION
+                            SELECT stotalamount sum1
+                            FROM   trans
+                            WHERE  bopen=-1
+                            AND    hperson=17806
+                            AND    samountpaid=0 and hretentionacct=52) unpaidcharge
