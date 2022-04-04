@@ -1,3 +1,5 @@
+When rent charges are unpaid completely before Deposit accounting: 
+
 select
   pr.scode ApplicationUniqueId,
   t.scode TenantID,
