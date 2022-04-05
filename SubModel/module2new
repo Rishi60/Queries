@@ -17,7 +17,8 @@ select
   UnpaidRentTotal.unpaidrent UnpaidRentAtMoveOut,
   UnpaidOtherTotal.unpaidotheramt OtherUnpaidAmtAtMoveOut,
   AmtPaidAfterMoveout.ReceiptAfterDA AmountPaidByTenantAtMoveOut,
-  new.total unpaidrentamount
+  new.total unpaidrentamount,
+  new1.total unpaidotheramount
 from
   property p
   inner join unit u on u.hproperty = p.hmy
@@ -144,6 +145,59 @@ FROM   (
                             AND    hperson=33732
                             AND    samountpaid=0 and hretentionacct=52 group by hmy,stotalamount) unpaidcharge 
              group by unpaidcharge.charge) new on new.unpaidrentcharge = tr.hmy
+
+
+  left join (SELECT Sum(unpaidcharge.sum1) total,unpaidcharge.charge unpaidrentcharge
+FROM   (
+              SELECT Sum(tr1.stotalamount) sum1,tr1.hmy charge
+              FROM   trans tr1
+              WHERE  tr1.hmy IN
+                     (
+                            SELECT hchkorchg
+                            FROM   detail
+                            WHERE  hinvorrec IN
+                                   (
+                                              SELECT     tr2.hmy
+                                              FROM       trans tr2
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr2.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                     		
+                                              WHERE      CAST(CAST(tr2.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+                                              AND        tr2.itype=6
+                                              AND        tr2.hperson=33732 )
+                            AND    hchkorchg NOT IN
+                                   (
+                                              SELECT     tr3.hmy
+                                              FROM       trans tr3
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr3.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                              WHERE      CAST(CAST(tr3.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime))
+                            AND    tr1.itype=7
+                            AND    tr1.hperson IN
+                                   (
+                                          SELECT hmyperson
+                                          FROM   tenant
+                                          WHERE  scode='t0012692'
+                                          AND    istatus=1)
+                    		and tr1.hretentionacct <> 52)
+  group by tr1.hmy
+                            UNION
+                            SELECT stotalamount sum1,hmy charge
+                            FROM   trans
+                            WHERE  bopen=-1
+                            AND    hperson=33732
+                            AND    samountpaid=0 and hretentionacct <> 52 group by hmy,stotalamount) unpaidcharge 
+             group by unpaidcharge.charge) new1 on new1.unpaidrentcharge = tr.hmy
+             
+             
 where
   --p.ityperes = 1
   --and year(p.dtcreated) >= 2017
@@ -167,7 +221,8 @@ group by
   UnpaidOtherTotal.unpaidotheramt,
   t.istatus,
   AmtPaidAfterMoveout.ReceiptAfterDA,
-  new.total
+  new.total,
+  new1.total
   
   
   -----------------------------------------------------------------------------------------------------------
