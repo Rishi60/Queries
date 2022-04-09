@@ -1445,6 +1445,7 @@ from
                       and tr.itype=7 
      				and suserdefined2 not like '%Moveout%'
                       --AND  tr.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+     				and suserdefined2 <> ':Refund'
                       and tr.hretentionacct <> 52
                       
         group by hperson) unpaidrentchargeAtDA1 on unpaidrentchargeAtDA1.htent=tr.hperson
