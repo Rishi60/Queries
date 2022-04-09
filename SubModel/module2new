@@ -1272,7 +1272,6 @@ group by
 
 Final working query:
 
-
 select 
   pr.scode ApplicationUniqueId,
   t.scode TenantID,
@@ -1296,6 +1295,7 @@ select
   prepay.prepayamt PrepayAmount,
   unpaidrentchargeAtDA.sum1 unpaidrentamount  -----rent unpaid charge amount while posting DA 
   ,unpaidrentchargeAtDA1.sum1 unpaidotheramount  -----rent unpaid charge amount while posting DA 
+  ,refundafterDA.refundamount Refund
   --OtherUnpaidcharge.Sum1 UnpaidChargeExceptRent--other unpaid charge amount  while posting DA 
 from  
   property p
@@ -1449,7 +1449,44 @@ from
                       and tr.hretentionacct <> 52
                       
         group by hperson) unpaidrentchargeAtDA1 on unpaidrentchargeAtDA1.htent=tr.hperson
+ 
+  left join (
+  
+  
+  select sum(darentamt.rentamt) refundamount,  tr.hperson htent
+       from trans tr inner join 
+                     (
+                            SELECT sum(samount) rentamt, hchkorchg chg
+                            FROM   detail
+                            WHERE  hinvorrec IN
+                                   (
+                                              SELECT     tr2.hmy
+                                              FROM       trans tr2
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr2.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                     		
+                                              WHERE      CAST(CAST(tr2.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+                                              AND        tr2.itype=6
+                                              --AND        tr2.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+                                   )
+                       --and hacct in (select hchargebackacct from chargtyp where hmy <> 52) 
+                       group by hchkorchg
+                     )
+                      darentamt on darentamt.chg=tr.hmy 
+                      and tr.itype=7 
+     				--and suserdefined2 not like '%Moveout%'
+                      --AND  tr.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+     				and suserdefined2 = ':Refund'
+                      --and tr.hretentionacct <> 52
+                      
+        group by hperson) refundafterDA on refundafterDA.htent=tr.hperson
         
+ 
+ 
  left join (
    select sum(charge.chargeamt) chargeamt, tr.hperson htent from trans tr 
    left join (
@@ -1506,7 +1543,7 @@ where
   --p.ityperes = 1
   --and year(p.dtcreated) >= 2017
   --and isnull(p.binactive, 0) = 0
-  t.scode in ('t0005242','t0012692','t0005574','t0007377')
+  t.scode in ('t0000868')
 group by
   p.scode,
   p.saddr1,
@@ -1530,7 +1567,6 @@ group by
   ,prepay.prepayamt
   ,t.bmovedout
   ,chargeamt1.chargeamt
-  --,OtherUnpaidcharge.sum1
-  --,t.hmyperson
+  ,refundafterDA.refundamount
   
  order by pr.scode
