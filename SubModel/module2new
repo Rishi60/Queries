@@ -810,3 +810,232 @@ group by
   
  order by pr.scode
 
+------------------------------------------------------------------
+Woking: 9th April
+
+select 
+  pr.scode ApplicationUniqueId,
+  t.scode TenantID,
+  p.scode PropertyID,
+  p.saddr1 PropertyName,
+  u.scode Unit#,
+  CONVERT(varchar(10), t.dtleasefrom, 101) LeaseStartDate,
+  CONVERT(varchar(10), t.dtleaseto, 101) LeaseEndDate,
+  ts.status TenantStatus,
+  t.srent RentAmount,
+  CONVERT(varchar(10), t.dtmovein, 101) MoveInDate,
+  CONVERT(varchar(10), t.dtmoveout, 101) MoveDateOut,
+  OPBal.OPtotal OpenDepositBalance,       -------all refundable deposits amount.
+  COLBal.coltotal ClosedDepositBalance1_All_OpenCharges_OF_pasttenant_completed_Tenant_Till_Date,--(refer unpaid charges report tenant screen)Sum of all unpaid/remaining unpaid charges After DA as of date
+  UnpaidRentTotal.unpaidrent UnpaidRentAsOfCurrentDate,---All unpaid rent charges of all tenants as of current date.(DA not considered)
+  UnpaidOtherTotal.unpaidotheramt OtherUnpaidAmtAtMoveOut,--any other unpaid charges ,means charge still open, if any credit charge is open that will also be considered (rent not included)
+  AmtPaidAfterMoveout.ReceiptAfterDA AmountPaidByTenantAfterDA_Receipts_Created_AfterDA,--32.--all amounted receipts created  after DA date. IF 32 is value after DA then its fact that it has paid 32 amount charge
+  prepay.prepayamt PrepayAmount,
+  unpaidrentchargeAtDA.sum1 unpaidrentamount  -----rent unpaid charge amount while posting DA 
+  ,unpaidrentchargeAtDA1.sum1 unpaidotheramount  -----rent unpaid charge amount while posting DA 
+  --OtherUnpaidcharge.Sum1 UnpaidChargeExceptRent--other unpaid charge amount  while posting DA 
+from  
+  property p
+  inner join unit u on u.hproperty = p.hmy
+  inner join tenant t on t.hproperty = p.hmy
+  and t.hunit = u.hmy
+  inner join prospect pr on pr.htenant = t.hmyperson
+  left join tenstatus ts on ts.istatus = t.istatus
+  left join (
+    select
+      tr.hperson personhmy,
+      sum(tr.stotalamount) OPtotal
+    from
+      trans tr
+      inner join tenant t on t.hmyperson = tr.hperson
+      and tr.hretentionacct in (36,37,38,39)
+      --and tr.stotalamount > 0
+    and suserdefined2 not like '%Moveout%'
+    group by
+      tr.hperson
+  ) OPBal on OPBal.personhmy = t.hmyperson
+  left join (
+    select
+      tr.hperson personhmy,
+      sum(tr.stotalamount - tr.samountpaid) coltotal
+    from
+      tenant t
+      inner join trans tr on tr.hperson = t.hmyperson
+      and tr.bopen = -1
+      and t.istatus = 1
+      --and t.bmovedout = -1
+      and tr.itype = 7
+    group by
+      tr.hperson
+  ) COLBal on COLBal.personhmy = t.hmyperson
+  left join (
+    select
+      tr.hperson personhmy,
+      sum(tr.stotalamount - tr.samountpaid) unpaidrent
+    from
+      tenant t
+      inner join trans tr on tr.hperson = t.hmyperson
+      and tr.bopen = -1
+      and t.istatus = 1
+    and tr.itype=7
+      and tr.hretentionacct in (52, 75)
+    group by
+      tr.hperson
+  ) UnpaidRentTotal on UnpaidRentTotal.personhmy = t.hmyperson
+  left join (
+    select
+      tr.hperson personhmy,
+      sum(tr.stotalamount - tr.samountpaid) unpaidotheramt
+    from
+      tenant t
+      inner join trans tr on tr.hperson = t.hmyperson
+      and tr.bopen = -1
+      and t.istatus = 1
+      and tr.hretentionacct not in (52, 75)
+      and tr.itype = 7
+    group by
+      tr.hperson
+  ) UnpaidOtherTotal on UnpaidOtherTotal.personhmy = t.hmyperson
+  left join (
+    select
+      t.hmyperson personhmy,
+      sum(tr.stotalamount) ReceiptAfterDA
+    from
+      tenant t
+      inner join tenant_history th on th.htent = t.hmyperson
+      and th.sevent = 'Deposit Accounting'
+      and t.bmovedout = -1
+      and t.istatus = 1
+      inner join trans tr on tr.hperson = t.hmyperson
+      and tr.itype = 6
+    and isnull(tr.void,0)=0
+    and tr.stotalamount <>0
+      and CAST(CAST(tr.sdatecreated AS varchar(19)) AS datetime)>
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+    group by
+      t.hmyperson
+  ) AmtPaidAfterMoveout on AmtPaidAfterMoveout.personhmy = t.hmyperson
+  left join trans tr on tr.hperson=t.hmyperson
+  left join (
+  
+  
+  select case when sum(tr.stotalamount)=sum(darentamt.rentamt) then sum(darentamt.rentamt) else 
+       sum(darentamt.rentamt) + sum(tr.stotalamount-tr.samountpaid) end sum1, tr.hperson htent
+       from trans tr inner join 
+                     (
+                            SELECT sum(samount) rentamt, hchkorchg chg
+                            FROM   detail
+                            WHERE  hinvorrec IN
+                                   (
+                                              SELECT     tr2.hmy
+                                              FROM       trans tr2
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr2.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                     		
+                                              WHERE      CAST(CAST(tr2.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+                                              AND        tr2.itype=6
+                                              --AND        tr2.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+                                   )
+                       and hacct in (select hchargebackacct from chargtyp where hmy=52) 
+                       group by hchkorchg
+                     )
+                      darentamt on darentamt.chg=tr.hmy 
+                      and tr.itype=7 
+   						and tr.suserdefined2 not like '%Moveout%'
+                      --AND  tr.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+                      and tr.hretentionacct=52
+                      
+                     group by hperson) unpaidrentchargeAtDA on unpaidrentchargeAtDA.htent=tr.hperson
+   
+   left join (
+  
+  
+  select case when sum(tr.stotalamount)=sum(darentamt.rentamt) then sum(darentamt.rentamt) else 
+       sum(darentamt.rentamt) + sum(tr.stotalamount-tr.samountpaid) end sum1, tr.hperson htent
+       from trans tr inner join 
+                     (
+                            SELECT sum(samount) rentamt, hchkorchg chg
+                            FROM   detail
+                            WHERE  hinvorrec IN
+                                   (
+                                              SELECT     tr2.hmy
+                                              FROM       trans tr2
+                                              INNER JOIN tenant t
+                                              ON         t.hmyperson=tr2.hperson
+                                              INNER JOIN tenant_history th
+                                              ON         th.htent=t.hmyperson
+                                              AND        th.sevent='Deposit Accounting'
+                                     		
+                                              WHERE      CAST(CAST(tr2.sdatecreated AS varchar(19)) AS datetime)=
+                                     CAST(CAST(th.dtoccurred AS varchar(19)) AS datetime)
+                                              AND        tr2.itype=6
+                                              --AND        tr2.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+                                   )
+                       and hacct in (select hchargebackacct from chargtyp where hmy <> 52) 
+                       group by hchkorchg
+                     )
+                      darentamt on darentamt.chg=tr.hmy 
+                      and tr.itype=7 
+     				and suserdefined2 not like '%Moveout%'
+                      --AND  tr.hperson in (select hmyperson from tenant where scode in ('t0005242','t0012692'))
+                      and tr.hretentionacct <> 52
+                      
+        group by hperson) unpaidrentchargeAtDA1 on unpaidrentchargeAtDA1.htent=tr.hperson
+ left join
+ (
+     
+SELECT 
+	sum(d.sAmount) prepayamt,t.hmyperson tent
+FROM tenant t
+	,tenstatus ts
+	,trans tr
+	,acct a
+	,detail d
+WHERE tr.iType = 6
+	AND t.hMyPerson = tr.hPerson
+	AND tr.bOpen = - 1
+	AND t.hProperty > 0
+	AND tr.hMy = d.hInvOrRec
+	AND d.hChkOrChg IS NULL
+	AND d.hAcct = a.hMy
+	AND t.iStatus = ts.istatus
+  --and t.scode='t0005242' 
+   group by t.hmyperson
+)prepay on prepay.tent=tr.hperson
+             
+where
+  --p.ityperes = 1
+  --and year(p.dtcreated) >= 2017
+  --and isnull(p.binactive, 0) = 0
+  t.scode in ('t0005242','t0012692','t0005574')
+group by
+  p.scode,
+  p.saddr1,
+  u.scode,
+  pr.scode,
+  t.scode,
+  t.dtmovein,
+  t.dtleasefrom,
+  t.dtleaseto,
+  t.dtmoveout,
+  ts.status,
+  t.srent,
+  COLBal.coltotal,
+  OPBal.OPtotal,
+  UnpaidRentTotal.unpaidrent,
+  UnpaidOtherTotal.unpaidotheramt,
+  t.istatus,
+  AmtPaidAfterMoveout.ReceiptAfterDA
+  ,unpaidrentchargeAtDA.sum1
+  ,unpaidrentchargeAtDA1.sum1
+  ,prepay.prepayamt
+  --,OtherUnpaidcharge.sum1
+  --,t.hmyperson
+  
+ order by pr.scode
+
+
